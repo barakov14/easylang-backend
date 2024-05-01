@@ -139,7 +139,7 @@ class TaskTranslator(MethodView):
         send_task_assigned_notification(translator_id, project_id, task.name, project_name)
         send_deadline_notification(translator_id, project_id, task.name, project_name)
 
-        user = UserModel.query.filter_by(id=current_user_id).first()
+        user = UserModel.query.filter_by(id=translator_id).first()
         user.notifications_count += 1
         project = ProjectModel.query.get_or_404(project_id)
 
@@ -183,12 +183,13 @@ class TaskSubmission(MethodView):
         task_submission.status = "IN VERIFYING"  # Change submission status
 
         try:
-            user = UserModel.query.filter_by(id=current_user_id).first()
-            user.notifications_count += 1
+
             project_name = ProjectModel.query.get_or_404(project_id).name
             notification_msg = f"{current_user.name} {current_user.surname} has submitted the task {task.name} in project {project_name} for review"
             editors = UserModel.query.filter_by(role="editor").all()
             for editor in editors:
+                user = UserModel.query.filter_by(id=editor.id).first()
+                user.notifications_count += 1
                 send_notification(editor.id, project_id, project_name, "IN VERIFYING", notification_msg)
 
             task.submissions.append(task_submission)
@@ -431,13 +432,14 @@ class SendForCorrection(MethodView):
 
         # Проверяем, есть ли ошибки в сабмите
         if submission.errors:
-            user = UserModel.query.filter_by(id=current_user_id).first()
-            user.notifications_count += 1
             # Отправляем уведомление транслейтору о необходимости исправления
             translator_id = submission.translator_id
             project_name = ProjectModel.query.get_or_404(project_id).name
             notification_msg = f"Your submission for task {submission.task.name} in project {project_name} contains mistakes. Please review and make corrections."
             send_notification(translator_id, project_id, project_name, "REQUIRES_CORRECTION", notification_msg)
+
+            user = UserModel.query.filter_by(id=translator_id).first()
+            user.notifications_count += 1
 
             return {"message": "Submission sent for correction successfully"}, 200
         else:

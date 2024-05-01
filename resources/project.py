@@ -167,11 +167,11 @@ class ProjectEditor(MethodView):
 
         # Добавляем редактора к проекту
         try:
-            user = UserModel.query.filter_by(id=current_user_id).first()
-            user.notifications_count += 1
             project.editors.append(editor)
             notification_msg = f"You've been assigned as an editor to project {project.name}"
             send_notification(editor_id, project_id, project.name, "in_process", notification_msg)
+            user = UserModel.query.filter_by(id=editor_id).first()
+            user.notifications_count += 1
             db.session.commit()
             return editor, 200
         except SQLAlchemyError as e:
