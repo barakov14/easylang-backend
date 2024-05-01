@@ -1,224 +1,309 @@
-from flask import jsonify
+from flask import jsonify, current_app
 from flask.views import MethodView
+from flask_mail import Message, Mail
 from flask_smorest import Blueprint, abort
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt, get_jwt_identity
 from passlib.hash import pbkdf2_sha256
 from sqlalchemy.exc import SQLAlchemyError
 from models import UserModel
-from models.user import InvitationCodeModel
-from schemas import UserSchema, LoginUserSchema, InvitationCodeSchema, RegisterUserSchema
+from schemas import UserSchema, LoginUserSchema, RegisterUserSchema, UserListQueryArgsSchema
 from blocklist import BLOCKLIST
-
 from db import db
 
-blp = Blueprint("users", __name__, description="Users operations")
+blp = Blueprint("users", "users", description="Users operations")
 
-@blp.route("/register")
+
+@blp.route("/register", methods=["POST"])
 class Register(MethodView):
     @blp.arguments(RegisterUserSchema)
     def post(self, user_data):
+        username = user_data["username"]
         name = user_data["name"]
         surname = user_data["surname"]
-        username = user_data["username"]
+        email = user_data["email"]
         password = user_data["password"]
-        invitation_code_value = user_data["invitation_code"]
+        role = user_data["role"]
 
+        if role not in ["editor", "manager", "translator", "admin"]:
+            abort(400, message="Invalid role")
 
-        # Проверяем, существует ли пользователь с таким именем
         existing_user = UserModel.query.filter(UserModel.username == username).first()
         if existing_user:
-            abort(409, f"A user with username '{username}' already exists")
+            abort(409, message=f"A user with username '{username}' already exists")
 
-        invitation_code_obj = InvitationCodeModel.query.filter_by(code=invitation_code_value).first()
-        if not invitation_code_obj:
-            abort(404, f"No invitation code found with value '{invitation_code_value}'")
+        existing_email = UserModel.query.filter(UserModel.email == email).first()
+        if existing_email:
+            abort(409, message=f"A user with email '{email}' already exists")
 
-        role = invitation_code_obj.role
-
-        # Хешируем пароль
         hashed_password = pbkdf2_sha256.hash(password)
 
-        # Создаем нового пользователя
         user = UserModel(
-            username=username, password=hashed_password, name=name, surname=surname, role=role
+            username=username, name=name, surname=surname, email=email, password=hashed_password, role=role
         )
 
         try:
-            # Добавляем пользователя в базу данных и сохраняем изменения
             db.session.add(user)
             db.session.commit()
+
+            user_schema = UserSchema()
+            # send_registration_email(email, username, password)
+            serialized_user = user_schema.dump(user)
+
+            return serialized_user, 201
         except SQLAlchemyError as e:
             db.session.rollback()
-            # В случае ошибки вернем 500 с сообщением об ошибке
-            abort(500, str(e))
+            abort(500, message=str(e))
 
-        # Создаем токены доступа и обновления
-        token = create_access_token(identity=user.id)
 
-        # Возвращаем успешный ответ с токенами
-        return jsonify({
-            "token": token
-        })
-
-@blp.route("/login")
+@blp.route("/login", methods=["POST"])
 class Login(MethodView):
     @blp.arguments(LoginUserSchema)
     def post(self, user_data):
         username = user_data["username"]
         password = user_data["password"]
 
-        # Находим пользователя по имени
         user = UserModel.query.filter(UserModel.username == username).first()
         if not user or not pbkdf2_sha256.verify(password, user.password):
-            abort(401, "Invalid username or password")
+            abort(400, message="Username or password is not correct. Please try again.")
 
-        # Создаем токены доступа и обновления
         token = create_access_token(identity=user.id)
+        return jsonify({"token": token})
 
-        # Возвращаем успешный ответ с токенами
-        return jsonify({
-            "token": token,
-        })
 
-@blp.route("/logout")
+@blp.route("/logout", methods=["POST"])
 class Logout(MethodView):
     @jwt_required()
-    @blp.response(200, description="Successfully logged out")
     def post(self):
-        # Получаем токен из запроса
         jti = get_jwt()["jti"]
         BLOCKLIST.add(jti)
-        return jsonify({"message": "Successfully logged out"})
+        return jsonify({"message": "Successfully logged out"}), 200
 
-@blp.route("/user")
+
+@blp.route("/user", methods=["GET"])
 class UserInfo(MethodView):
     @jwt_required()
     @blp.response(200, UserSchema)
     def get(self):
-        # Получаем идентификатор пользователя из токена доступа
         current_user_id = get_jwt_identity()
-
-        # Находим пользователя по идентификатору
         user = UserModel.query.get(current_user_id)
         if not user:
-            abort(404, "User not found")
+            abort(404, message="User not found")
+        user_schema = UserSchema()
+        return user_schema.dump(user)
 
-        # Возвращаем информацию о пользователе
-        return jsonify(UserSchema().dump(user))
 
-
-@blp.route("/users")
+@blp.route("/users", methods=["GET"])
 class UserList(MethodView):
+    @blp.arguments(UserListQueryArgsSchema, location='query')
     @blp.response(200, UserSchema(many=True))
-    def get(self):
-        # Query all users and sort them by 'rate' attribute in descending order
-        users = UserModel.query.order_by(UserModel.rate.desc()).all()
+    def get(self, args):
+        users_query = UserModel.query
+        if args.get('name'):
+            users_query = users_query.filter(UserModel.name.ilike(f"%{args['name']}%"))
+        if args.get('id'):
+            users_query = users_query.filter(UserModel.id == args['id'])
+        if args.get('role'):
+            users_query = users_query.filter(UserModel.role == args['role'])
 
-        # Serialize the user data into JSON format
+        users_query = users_query.order_by(UserModel.rate.desc())
+        users = users_query.all()
+
         user_schema = UserSchema(many=True)
-        serialized_users = user_schema.dump(users)
+        return user_schema.dump(users)
 
-        # Return the sorted list of users
-        return jsonify(serialized_users)
 
-@blp.route("/users/editors")
+@blp.route("/users/editors", methods=["GET"])
 class EditorsList(MethodView):
     @blp.response(200, UserSchema(many=True))
     def get(self):
-        # Query editors and sort them by 'rate' attribute in descending order
         editors = UserModel.query.filter_by(role='editor').order_by(UserModel.rate.desc()).all()
-
-        # Serialize the editor data into JSON format
         user_schema = UserSchema(many=True)
-        serialized_editors = user_schema.dump(editors)
+        return user_schema.dump(editors)
 
-        # Return the sorted list of editors
-        return jsonify(serialized_editors)
 
-@blp.route("/users/managers")
+@blp.route("/users/managers", methods=["GET"])
 class ManagersList(MethodView):
     @blp.response(200, UserSchema(many=True))
     def get(self):
-        # Query managers and sort them by 'rate' attribute in descending order
         managers = UserModel.query.filter_by(role='manager').order_by(UserModel.rate.desc()).all()
-
-        # Serialize the manager data into JSON format
         user_schema = UserSchema(many=True)
-        serialized_managers = user_schema.dump(managers)
+        return user_schema.dump(managers)
 
-        # Return the sorted list of managers
-        return jsonify(serialized_managers)
 
-@blp.route("/users/translators")
+@blp.route("/users/translators", methods=["GET"])
 class TranslatorsList(MethodView):
     @blp.response(200, UserSchema(many=True))
     def get(self):
-        # Query translators and sort them by 'rate' attribute in descending order
         translators = UserModel.query.filter_by(role='translator').order_by(UserModel.rate.desc()).all()
-
-        # Serialize the translator data into JSON format
         user_schema = UserSchema(many=True)
-        serialized_translators = user_schema.dump(translators)
+        return user_schema.dump(translators)
 
-        # Return the sorted list of translators
-        return jsonify(serialized_translators)
 
-@blp.route("/generate-invitation-code")
-class GenerateInvitationCode(MethodView):
-    @blp.arguments(InvitationCodeSchema)
-    @blp.response(201, InvitationCodeSchema)
-    # @jwt_required()
-    def post(self, code_data):
-        # current_user_id = get_jwt_identity()
-        # current_user = UserModel.query.get(current_user_id)
-        #
-        # if current_user.role != "manager":
-        #     abort(403, message="Only managers can generate invitation codes.")
+@blp.route("/user/<int:user_id>", methods=["GET", "PUT", "DELETE"])
+class User(MethodView):
+    @jwt_required()
+    @blp.response(200, UserSchema)
+    def get(self, user_id):
+        current_user_id = get_jwt_identity()
+        current_user = UserModel.query.get(current_user_id)
+        if not current_user or current_user.role != "admin":
+            abort(403, message="Only admins can access user details.")
 
-        # Генерация случайного кода
-        random_code = generate_random_code()
+        user = UserModel.query.get_or_404(user_id)
+        user_schema = UserSchema()
+        return user_schema.dump(user)
 
-        # Создание записи с invitation_code в базе данных
-        invitation_code = InvitationCodeModel(code=random_code, role=code_data["role"])
+    @jwt_required()
+    @blp.arguments(UserSchema)
+    @blp.response(200, UserSchema)
+    def put(self, user_data, user_id):
+        current_user_id = get_jwt_identity()
+        current_user = UserModel.query.get(current_user_id)
+        if not current_user or current_user.role != "admin":
+            abort(403, message="Only admins can update users.")
+
+        user = UserModel.query.get_or_404(user_id)
+        user.username = user_data["username"]
+        user.name = user_data["name"]
+        user.surname = user_data["surname"]
+        user.role = user_data["role"]
+
+        user_schema = UserSchema()
 
         try:
-            # Добавление кода в базу данных и сохранение изменений
-            db.session.add(invitation_code)
             db.session.commit()
         except SQLAlchemyError as e:
             db.session.rollback()
-            # В случае ошибки вернем 500 с сообщением об ошибке
+            abort(500, message="Failed to update user.")
+
+        return user_schema.dump(user)
+
+    @jwt_required()
+    @blp.response(204)
+    def delete(self, user_id):
+        current_user_id = get_jwt_identity()
+        current_user = UserModel.query.get(current_user_id)
+        if not current_user or current_user.role != "admin":
+            abort(403, message="Only admins can delete users.")
+
+        user = UserModel.query.get_or_404(user_id)
+
+        try:
+            db.session.delete(user)
+            db.session.commit()
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            abort(500, message="Failed to delete user.")
+
+        return "", 204
+
+
+@blp.route("/users/translators/available", methods=["GET"])
+class AvailableTranslators(MethodView):
+    @blp.response(200, UserSchema(many=True))
+    def get(self):
+        translators = UserModel.query.filter_by(role='translator', status='READY').all()
+        user_schema = UserSchema(many=True)
+        return user_schema.dump(translators)
+
+
+@blp.route("/users/editors/available", methods=["GET"])
+class AvailableEditors(MethodView):
+    @blp.response(200, UserSchema(many=True))
+    def get(self):
+        editors = UserModel.query.filter_by(role='editor', status='READY').all()
+        user_schema = UserSchema(many=True)
+        return user_schema.dump(editors)
+
+
+from flask import jsonify
+from flask.views import MethodView
+
+
+@blp.route("/users/translators/rating", methods=["GET"])
+class TranslatorsRating(MethodView):
+    @blp.response(200, UserSchema(many=True))
+    def get(self):
+        translators = UserModel.query.filter_by(role='translator').all()
+        ratings = []
+        for translator in translators:
+            rating = {
+                "id": translator.id,
+                "name": translator.name,
+                "surname": translator.surname,
+                "rate": translator.rate,
+                "tasks_completed": translator.tasks_completed
+            }
+            ratings.append(rating)
+
+        # Sort the translators list based on their rating (assuming you have a 'rating' attribute)
+        ratings = sorted(ratings, key=lambda x: x.get("rate", 0), reverse=True)
+
+        for i, rating in enumerate(ratings, start=1):
+            rating["place"] = i
+        return jsonify(ratings)
+
+
+@blp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    current_user = get_jwt_identity()
+    access_token = create_access_token(identity=current_user)
+    return jsonify({'access_token': access_token}), 200
+
+@blp.route("/users/<int:user_id>/ready", methods=["POST"])
+class SetUserReady(MethodView):
+    @jwt_required()
+    def post(self, user_id):
+        current_user_id = get_jwt_identity()
+        current_user = UserModel.query.get(current_user_id)
+
+        # Проверяем, является ли текущий пользователь администратором
+        if current_user.role != "admin":
+            abort(403, message="Only admin can change user status.")
+
+        # Получаем пользователя по его ID
+        user = UserModel.query.get_or_404(user_id)
+
+        # Устанавливаем статус пользователя в READY
+        user.status = "READY"
+
+        try:
+            db.session.commit()
+            return {"message": f"User {user.username} status set to READY"}, 200
+        except SQLAlchemyError as e:
+            db.session.rollback()
             abort(500, message=str(e))
 
-        # Возвращаем успешный ответ с созданным кодом
-        return jsonify({
-            "code": random_code,
-            "role": code_data["role"]
-        })
 
-
-
-@blp.route("/user/role")
-class UserRole(MethodView):
+@blp.route("/users/<int:user_id>/not_ready", methods=["POST"])
+class SetUserNotReady(MethodView):
     @jwt_required()
-    def get(self):
-        # Получаем идентификатор текущего пользователя из токена доступа
+    def post(self, user_id):
         current_user_id = get_jwt_identity()
+        current_user = UserModel.query.get(current_user_id)
 
-        # Находим пользователя по его идентификатору
-        user = UserModel.query.get(current_user_id)
-        if not user:
-            abort(404, "User not found")
+        # Проверяем, является ли текущий пользователь администратором
+        if current_user.role != "admin":
+            abort(403, message="Only admin can change user status.")
 
-        # Получаем роль пользователя
-        user_role = user.role
+        # Получаем пользователя по его ID
+        user = UserModel.query.get_or_404(user_id)
 
-        # Возвращаем роль текущего пользователя
-        return jsonify({"role": user_role})
+        # Устанавливаем статус пользователя в NOT READY
+        user.status = "NOT READY"
 
-def generate_random_code():
-    # Ваш код для генерации случайного кода
-    # В этом примере я использую библиотеку secrets для генерации случайной строки
-    import secrets
-    random_code = secrets.token_urlsafe(16)  # Генерация случайной строки длиной 16 символов
-    return random_code
+        try:
+            db.session.commit()
+            return {"message": f"User {user.username} status set to NOT READY"}, 200
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            abort(500, message=str(e))
+
+
+
+def send_registration_email(email, username, password):
+    mail = Mail(current_app)
+    msg = Message('Registration Confirmation', recipients=[email])
+    msg.body = f"Hello {username},\n\nThank you for registering! Your password is: {password}"
+    mail.send(msg)

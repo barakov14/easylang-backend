@@ -8,7 +8,11 @@ class TaskSubmissionModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.String)
     grade = db.Column(db.Integer)
-    status = db.Column(db.String, default='in_process')
+    status = db.Column(db.String, default='IN PROGRESS')
+    pages_done = db.Column(db.Integer)
+    rejected = db.Column(db.Integer, default=0)
+    comment = db.Column(db.String)
+    translator_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
 
 class TaskModel(db.Model):
@@ -17,11 +21,12 @@ class TaskModel(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.String(20), default='in_process')
+    status = db.Column(db.String(20), default='IN PROGRESS')
     started_at = db.Column(db.String, default=datetime.utcnow)
-    deadline = db.Column(db.String)
+    deadline = db.Column(db.String, nullable=True)
+    pages = db.Column(db.Integer, nullable=False)
     progress = db.Column(db.Integer, default=0)
-    success = db.Column(db.Integer, default=100)
+    code = db.Column(db.Integer, nullable=False)
     responsibles = db.relationship('UserModel', secondary='task_responsibles')
     submissions = db.relationship('TaskSubmissionModel', backref='task', secondary='task_submitted')
 
@@ -36,6 +41,6 @@ class TaskResponsiblesModel(db.Model):
 class TaskSubmittedModel(db.Model):
     __tablename__ = 'task_submitted'
 
-    project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), primary_key=True)
+    # project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('task_submissions.id'), primary_key=True)

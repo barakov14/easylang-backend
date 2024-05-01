@@ -7,3 +7,5 @@ flask-jwt-extended
 passlib
 flask-admin
 flask-cors
+celery
+flask-mail

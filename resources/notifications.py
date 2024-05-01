@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_smorest import Blueprint
 
 from db import db
-from models import NotificationModel
+from models import NotificationModel, ProjectModel, UserModel
 from models.notifications import NotificationUserModel
 from schemas import NotificationSchema
 
@@ -60,3 +60,25 @@ def send_notification(user_id, project_id, project_name, status, msg):
     notification_user = NotificationUserModel(notification_id=notification.id, user_id=user_id)
     db.session.add(notification_user)
     db.session.commit()
+@blp.route("/notifications/count", methods=["GET"])
+class NotificationCount(MethodView):
+    @jwt_required()
+    def get(self):
+        current_user_id = get_jwt_identity()
+        user = UserModel.query.filter_by(id=current_user_id).first()
+        count = user.notifications_count
+        return {"count": count}, 200
+
+@blp.route("/notifications/clear", methods=["DELETE"])
+class NotificationClear(MethodView):
+    @jwt_required()
+    def delete(self):
+        try:
+            current_user_id = get_jwt_identity()
+            user = UserModel.query.filter_by(id=current_user_id).first()
+            user.notifications_count = 0
+            db.session.commit()
+            return {"message": "Notification count cleared successfully"}, 200
+        except Exception as e:
+            db.session.rollback()
+            return {"message": f"Failed to clear notification count: {str(e)}"}, 500
