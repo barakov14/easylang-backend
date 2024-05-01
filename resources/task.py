@@ -302,8 +302,9 @@ class TaskSubmissionReject(MethodView):
         submission.rejected += 1
 
         try:
+            comment = correction_data['comment']
             project = ProjectModel.query.get_or_404(project_id)
-            notification_msg = f"{current_user.name} {current_user.surname} hasn't approved the task {task.name} in project {project.name}. Comment: {correction_data["comment"]}"
+            notification_msg = f"{current_user.name} {current_user.surname} hasn't approved the task {task.name} in project {project.name}. Comment: {comment}"
             for translator in project.translators:
                 send_notification(translator.id, project_id, project.name, submission.status, notification_msg)
             db.session.commit()
