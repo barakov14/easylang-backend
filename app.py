@@ -5,6 +5,7 @@ from celery import Celery
 from flask import Flask
 from flask_smorest import Api
 from flask_jwt_extended import JWTManager
+from flask_cors import CORS
 from flask_mail import Mail
 from admin import setup_admin
 from db import db
@@ -73,6 +74,8 @@ def create_app(db_url=None):
 
     # Создание API
     api = Api(app)
+
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Флаг для отслеживания, была ли уже выполнена инициализация базы данных
     initialized = False
