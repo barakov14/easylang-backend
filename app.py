@@ -75,7 +75,7 @@ def create_app(db_url=None):
     # Создание API
     api = Api(app)
 
-    CORS(app, resources={r"/*": {"origins": "http://localhost:4200"}})
+    CORS(app, resources={r"/*": {"origins": "https://sdu-easylang-project.web.app/"}})
 
     # Флаг для отслеживания, была ли уже выполнена инициализация базы данных
     initialized = False
