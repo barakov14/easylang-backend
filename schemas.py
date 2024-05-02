@@ -153,7 +153,6 @@ class UpdateProjectSchema(Schema):
     tasks = fields.List(fields.Nested(ReadTaskSchema), dump_only=True)
     translators = fields.List(fields.Nested(UserSchema), dump_only=True)
 
-
 class NotificationSchema(Schema):
     id = fields.Int(dump_only=True)
     count = fields.Int(dump_only=True)
