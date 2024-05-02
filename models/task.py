@@ -10,7 +10,6 @@ class TaskSubmissionModel(db.Model):
     grade = db.Column(db.Integer)
     status = db.Column(db.String, default='IN PROGRESS')
     pages_done = db.Column(db.Integer)
-    rejected = db.Column(db.Integer, default=0)
     comment = db.Column(db.String)
     translator_id = db.Column(db.Integer, db.ForeignKey('users.id'))
 
@@ -25,6 +24,7 @@ class TaskModel(db.Model):
     started_at = db.Column(db.String, default=datetime.utcnow)
     deadline = db.Column(db.String, nullable=True)
     pages = db.Column(db.Integer, nullable=False)
+    rejected = db.Column(db.Integer, default=0)
     progress = db.Column(db.Integer, default=0)
     code = db.Column(db.Integer, nullable=False)
     responsibles = db.relationship('UserModel', secondary='task_responsibles')

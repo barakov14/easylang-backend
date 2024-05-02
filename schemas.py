@@ -45,7 +45,6 @@ class TaskSubmissionSchema(Schema):
     pages_done = fields.Int(required=True)
     translator_id = fields.Int(dump_only=True)
     comment = fields.Str(dump_only=True)
-    rejected = fields.Str(dump_only=True)
     grade = fields.Float(dump_only=True)
     status = fields.Str(dump_only=True, validate=validate.OneOf(
         ['IN PROGRESS', 'MAY BE DELAYED', 'IN VERIFYING', 'NOT APPROVED', 'APPROVED']))
@@ -68,6 +67,7 @@ class SetTaskDeadlineSchema(Schema):
 class CreateTaskSchema(Schema):
     id = fields.Int(dump_only=True)
     code = fields.Int(dump_only=True)
+    rejected = fields.Str(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
     status = fields.Str(dump_only=True, validate=validate.OneOf(
@@ -84,6 +84,7 @@ class CreateTaskSchema(Schema):
 class ReadTaskSchema(Schema):
     id = fields.Int(dump_only=True)
     code = fields.Int(dump_only=True)
+    rejected = fields.Str(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
     status = fields.Str(dump_only=True, validate=validate.OneOf(['IN PROGRESS', 'FINISHED', 'MAY BE DELAYED']),

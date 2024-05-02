@@ -300,7 +300,7 @@ class TaskSubmissionReject(MethodView):
 
         submission.status = "NOT APPROVED"
         submission.comment = correction_data["comment"]
-        submission.rejected += 1
+        task.rejected += 1
 
         try:
             comment = correction_data['comment']
