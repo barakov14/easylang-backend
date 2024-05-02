@@ -251,7 +251,7 @@ class TaskSubmissionGrade(MethodView):
         project = ProjectModel.query.get_or_404(project_id)
 
         if task.pages != 0:
-            task_progress_increase = (submission.num_pages_done / task.pages) * 100
+            task_progress_increase = (submission.pages_done / task.pages) * 100
             task.progress = min(task.progress + task_progress_increase, 100)
 
         if project.number_of_pages != 0:
