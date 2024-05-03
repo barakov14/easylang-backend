@@ -44,44 +44,44 @@ class ProjectList(MethodView):
             print(e)
             abort(500, message="Failed to create project due to a database error.")
 
-    @blp.arguments(ProjectsListQueryArgsSchema, location='query')
-    @blp.response(200, ReadProjectSchema(many=True))
-    @jwt_required()
-    def get(self, query_args):
-        current_user_id = get_jwt_identity()
-        current_user = UserModel.query.get(current_user_id)
+        @blp.arguments(ProjectsListQueryArgsSchema, location='query')
+        @blp.response(200, ReadProjectSchema(many=True))
+        @jwt_required()
+        def get(self, query_args):
+            current_user_id = get_jwt_identity()
+            current_user = UserModel.query.get(current_user_id)
 
-        # Query projects based on user role
-        if current_user.role == "manager":
-            projects_query = ProjectModel.query
-        elif current_user.role in ["editor", "translator"]:
-            projects_query = ProjectModel.query.filter(
-                (ProjectModel.editors.any(id=current_user_id)) |
-                (ProjectModel.translators.any(id=current_user_id))
-            )
-        else:
-            projects_query = ProjectModel.query
+            # Query projects based on user role
+            if current_user.role == "manager":
+                projects_query = ProjectModel.query
+            elif current_user.role in ["editor", "translator"]:
+                projects_query = ProjectModel.query.filter(
+                    (ProjectModel.editors.any(id=current_user_id)) |
+                    (ProjectModel.translators.any(id=current_user_id))
+                )
+            else:
+                projects_query = ProjectModel.query
 
-        # Apply filters if provided
-        if 'filter' in query_args:
-            filter_value = f"%{query_args['filter']}%"
-            projects_query = projects_query.filter(
-                (ProjectModel.name.ilike(filter_value)) |
-                (ProjectModel.id.ilike(filter_value)) |
-                (ProjectModel.description.ilike(filter_value))
-            )
-        if 'status' in query_args:
-            projects_query = projects_query.filter(ProjectModel.status == query_args['status'])
+            # Apply filters if provided
+            if 'filter' in query_args:
+                filter_value = f"%{query_args['filter']}%"
+                projects_query = projects_query.filter(
+                    (ProjectModel.name.ilike(filter_value)) |
+                    (ProjectModel.id.ilike(filter_value)) |
+                    (ProjectModel.description.ilike(filter_value))
+                )
+            if 'status' in query_args:
+                projects_query = projects_query.filter(ProjectModel.status == query_args['status'])
 
-        # Sort projects by date (ascending or descending)
-        if 'sort_by_date' in query_args:
-            if query_args['sort_by_date'] == 'asc':
-                projects_query = projects_query.order_by(ProjectModel.started_at.asc())
-            elif query_args['sort_by_date'] == 'desc':
-                projects_query = projects_query.order_by(ProjectModel.started_at.desc())
+            # Sort projects by date (ascending or descending)
+            if 'sort_by_date' in query_args:
+                if query_args['sort_by_date'] == 'asc':
+                    projects_query = projects_query.order_by(ProjectModel.started_at.asc())
+                elif query_args['sort_by_date'] == 'desc':
+                    projects_query = projects_query.order_by(ProjectModel.started_at.desc())  # Изменение здесь
 
-        projects = projects_query.all()
-        return projects, 200
+            projects = projects_query.all()
+            return projects, 200
 
 
 

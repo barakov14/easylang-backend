@@ -6,9 +6,8 @@ from flask_smorest import Blueprint, abort
 from sqlalchemy.exc import SQLAlchemyError
 from db import db
 from models import UserModel, ProjectModel
-from models.notifications import NotificationUserModel
 from models.project import ProjectTasksModel
-from models.task import TaskModel, TaskSubmissionModel, TaskSubmittedModel
+from models.task import TaskModel, TaskSubmissionModel
 from resources.notifications import send_notification
 from schemas import ReadTaskSchema, CreateTaskSchema, UserSchema, TaskSubmissionSchema, TaskSubmissionCheckingSchema, \
     TaskSubmissionFilterSchema, DeadlineSchema, SetTaskDeadlineSchema, TaskSubmissionSchemaSendForCorrection
