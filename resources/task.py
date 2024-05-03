@@ -254,7 +254,7 @@ class TaskSubmissionGrade(MethodView):
             task.progress = min(task.progress + task_progress_increase, 100)
 
         if project.number_of_pages != 0:
-            project_progress_increase = (submission.num_pages_done / project.number_of_pages) * 100
+            project_progress_increase = (submission.pages_done / project.number_of_pages) * 100
             project.progress = min(project.progress + project_progress_increase, 100)
 
         # Update the grade and status of the submission
