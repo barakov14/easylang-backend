@@ -43,9 +43,9 @@ class ProjectList(MethodView):
                 creator_id=current_user_id
             )
             db.session.add(project)
+            db.session.commit()
             project_id = project.id
             project_switch_status(project_id)
-            db.session.commit()
             return project, 201
         except SQLAlchemyError as e:
             db.session.rollback()
