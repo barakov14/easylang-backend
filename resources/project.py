@@ -40,8 +40,7 @@ class ProjectList(MethodView):
                 code=project_code,
                 description=project_data['description'],
                 number_of_pages=project_data['number_of_pages'],
-                creator_id=current_user_id,
-                creator=current_user
+                creator_id=current_user_id
             )
             db.session.add(project)
             project_id = project.id
