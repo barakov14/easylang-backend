@@ -7,6 +7,8 @@ from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_mail import Mail
+
+from admin import setup_admin
 from db import db
 from resources.user import blp as UserBlueprint
 from resources.project import blp as ProjectBlueprint
@@ -100,7 +102,7 @@ def create_app(db_url=None, blueprint_name=None):
         app.register_blueprint(TaskBlueprint)
         app.register_blueprint(NotificationBlueprint)
 
-    # setup_admin(app)
+    setup_admin(app)
     mail = Mail()
 
     # Подключение и настройка Celery
