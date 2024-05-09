@@ -9,7 +9,7 @@ class ProjectModel(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.String(20))
+    status = db.Column(db.String(20), default="NEW")
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     ended_at = db.Column(db.DateTime, nullable=True, default=None)
     progress = db.Column(db.Float, default=0)
