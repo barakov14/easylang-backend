@@ -7,13 +7,13 @@ from flask_smorest import Api
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from flask_mail import Mail
-from admin import setup_admin
 from db import db
 from resources.user import blp as UserBlueprint
 from resources.project import blp as ProjectBlueprint
 from resources.task import blp as TaskBlueprint
 from resources.notifications import blp as NotificationBlueprint
 from blocklist import BLOCKLIST
+
 
 def make_celery(app):
     celery = Celery(
@@ -24,7 +24,8 @@ def make_celery(app):
     celery.conf.update(app.config)
     return celery
 
-def create_app(db_url=None):
+
+def create_app(db_url=None, blueprint_name=None):
     app = Flask(__name__)
 
     # Настройки конфигурации
@@ -48,6 +49,7 @@ def create_app(db_url=None):
     app.config['DEBUG'] = True
     app.config['CELERY_BROKER_URL'] = 'redis://localhost:6379/0'
     app.config['CELERY_RESULT_BACKEND'] = 'redis://localhost:6379/0'
+    app.config['CELERY_ALWAYS_EAGER'] = True
 
     jwt = JWTManager(app)
 
@@ -87,16 +89,25 @@ def create_app(db_url=None):
             db.create_all()
             initialized = True
 
-    # Регистрация blueprint'ов
-    api.register_blueprint(UserBlueprint)
-    api.register_blueprint(ProjectBlueprint)
-    api.register_blueprint(TaskBlueprint)
-    api.register_blueprint(NotificationBlueprint)
+    if blueprint_name:
+        app.register_blueprint(UserBlueprint, name=blueprint_name + '_user')
+        app.register_blueprint(ProjectBlueprint, name=blueprint_name + '_project')
+        app.register_blueprint(TaskBlueprint, name=blueprint_name + '_task')
+        app.register_blueprint(NotificationBlueprint, name=blueprint_name + '_notification')
+    else:
+        app.register_blueprint(UserBlueprint)
+        app.register_blueprint(ProjectBlueprint)
+        app.register_blueprint(TaskBlueprint)
+        app.register_blueprint(NotificationBlueprint)
 
-    setup_admin(app)
+    # setup_admin(app)
     mail = Mail()
 
     # Подключение и настройка Celery
     celery = make_celery(app)
 
     return app
+
+
+app = create_app()
+celery = make_celery(app)

@@ -9,11 +9,12 @@ class ProjectModel(db.Model):
     code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.String(20), default='IN PROGRESS')
+    status = db.Column(db.String(20))
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     ended_at = db.Column(db.DateTime, nullable=True, default=None)
     progress = db.Column(db.Float, default=0)
     number_of_pages = db.Column(db.Integer)
+    deadline = db.Column(db.DateTime)
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     creator = db.relationship('UserModel', backref='projects_created_by_user', secondary='project_creators')

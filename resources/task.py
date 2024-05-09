@@ -102,13 +102,9 @@ class SetTaskDeadline(MethodView):
             task = TaskModel.query.get_or_404(task_id)
 
             # Проверяем, принадлежит ли задача текущему пользователю (переводчику)
-            if task.translator_id == current_user_id:
-                # Устанавливаем дедлайн для задачи и сохраняем изменения
-                task.deadline = deadline_data['deadline']
-                db.session.commit()
-                return task, 200
-            else:
-                abort(403, message="You can only set deadline for your own tasks.")
+            task.deadline = deadline_data['deadline']
+            db.session.commit()
+            return task, 201
         else:
             abort(403, message="Only translators can set deadlines.")
 
@@ -141,6 +137,8 @@ class TaskTranslator(MethodView):
         user = UserModel.query.filter_by(id=translator_id).first()
         user.notifications_count += 1
         project = ProjectModel.query.get_or_404(project_id)
+
+        send_submission_reminder(project_id, project.name, translator_id)
 
         project.translators.append(translator)
         task.responsibles.append(translator)
@@ -194,6 +192,7 @@ class TaskSubmission(MethodView):
             task.submissions.append(task_submission)
             db.session.add(task_submission)
             db.session.commit()
+            submit_task(project_name, project_id, current_user_id, task_submission.id, task_id)
 
             return task_submission, 201
         except SQLAlchemyError as e:
@@ -446,26 +445,28 @@ class SendForCorrection(MethodView):
 
 
 @celery.task
-def send_submission_reminder(translator_id):
+def send_submission_reminder(translator_id, project_id, project_name):
     # Получаем текущую дату и время
     current_datetime = datetime.now()
 
     # Проверяем, является ли текущий день пятницей
     if current_datetime.weekday() == 4:
         # Отправляем уведомление о сдаче задания транслятору
-        # Здесь вы можете вызвать функцию отправки уведомления или выполнить любые другие действия
+        send_notification(translator_id, project_id, project_name, 'REQUIRES_REMINDER', 'It`s Friday. Please submit '                                                                          'your work')
         pass
 
 
 @celery.task
-def submit_task(translator_id, task_id, percent_completed):
+def submit_task(project_name, project_id, translator_id, submission_id, task_id):
     # Получаем текущее время
-    current_time = datetime.now().time()
+    current_datetime = datetime.now().time()
+    submission = TaskSubmissionModel.query.get_or_404(submission_id)
 
     # Проверяем, что текущее время до 18:00
-    if current_time < datetime.strptime("18:00", "%H:%M").time():
-        # Выполняем сабмит задания
-        # Здесь вы можете добавить логику сабмита задания
+    if current_datetime < datetime.strptime("18:00", "%H:%M").time():
+        if submission.status == 'IN PROGRESS':
+            send_notification(translator_id, project_id, project_name, 'DELAYED', 'Your work delayed')
+            submission.status = 'MAY BE DELAYED'
         pass
 
 

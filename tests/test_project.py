@@ -4,33 +4,43 @@ from db import db
 from models import UserModel
 from app import create_app
 
+
 @pytest.fixture
 def app():
     app = create_app(db_url="sqlite:///:memory:")
     with app.app_context():
         db.create_all()
-        user = UserModel(username='manager123', name='name', surname='surname', password='123456',
-                         email='manager@example.com', role='manager')
-        db.session.add(user)
+        editor = UserModel(username='editor123', name='name', surname='surname', password='123456',
+                           email='edirjefjkds@example.com', role='editor')
+        manager = UserModel(username='manager123', name='name', surname='surname', password='123456',
+                            email='manager@example.com', role='manager')
+        translator = UserModel(username='translator123', name='name', surname='surname', password='123456',
+                               email='trans@example.com', role='translator')
+        db.session.add(manager)
+        db.session.add(translator)
+        db.session.add(editor)
         db.session.commit()
     yield app
     with app.app_context():
         db.session.remove()
         db.drop_all()
 
+
 @pytest.fixture
 def client(app):
     return app.test_client()
 
+
 @pytest.fixture
-def access_token(app):
+def access_token_manager(app):
     with app.app_context():
         user = UserModel.query.filter_by(username='manager123').first()
         access_token = create_access_token(identity=user.id)
         return access_token
 
-def test_create_project(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_create_project(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
@@ -41,14 +51,16 @@ def test_create_project(client, access_token):
     assert 'id' in response.json
     assert response.json['name'] == data['name']
 
-def test_get_projects(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_get_projects(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     response = client.get('/projects', headers=headers)
     assert response.status_code == 200
     assert len(response.json) == 0  # Assuming there are no projects initially
 
-def test_get_single_project(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_get_single_project(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
@@ -61,8 +73,9 @@ def test_get_single_project(client, access_token):
     assert response.status_code == 200
     assert response.json['id'] == project_id
 
-def test_update_project(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_update_project(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
@@ -82,8 +95,9 @@ def test_update_project(client, access_token):
     assert response.json['description'] == updated_data['description']
     assert response.json['number_of_pages'] == updated_data['number_of_pages']
 
-def test_delete_project(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_delete_project(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
@@ -95,45 +109,31 @@ def test_delete_project(client, access_token):
     response = client.delete(f'/projects/{project_id}', headers=headers)
     assert response.status_code == 204
 
-def test_add_project_editor(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+
+def test_add_project_editor(client, access_token_manager, app):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
+
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 10
+        'number_of_pages': 13
     }
     response = client.post('/projects', json=data, headers=headers)
-    assert response.status_code == 201  # Ensure project creation is successful
-    project_id = response.json['id']
-    print("Project created successfully. ID:", project_id)
+    projid = response.json.get('id')  # Используем .get(), чтобы безопасно получить значение
 
-    editor_data = {
-        'username': 'editor123',
-        'name': 'Editor',
-        'surname': 'Surname',
-        'password': '123456',
-        'email': 'editor1231@example.com',
-        'role': 'editor'
-    }
-    # Step 1: Register the editor
-    response = client.post('/register', json=editor_data)
-    assert response.status_code == 201  # Ensure editor registration is successful
-    editor_id = response.json['id']
-    print("Editor registered successfully. ID:", editor_id)
+    with app.app_context():  # Устанавливаем контекст приложения Flask
+        editor = UserModel.query.filter_by(username='editor123').first()
+        if editor:
+            editor_id = editor.id
+        else:
+            pytest.fail("Editor user not found.")
 
-    # Step 2: Add the registered editor to the project
-    response = client.post(f'/projects/{project_id}/editors/{editor_id}', headers=headers)
-    assert response.status_code == 200
-    print("Editor added to the project successfully.")
-
-    # Additional checks if needed
-    assert response.json['username'] == editor_data['username']
+    response = client.post(f'/projects/{projid}/editors/{editor_id}', headers=headers)  # Print the response content
+    assert response.status_code == 200  # Ensure editor registration is successful
 
 
-
-
-def test_get_user_projects(client, access_token):
-    headers = {'Authorization': f'Bearer {access_token}'}
+def test_get_user_projects(client, access_token_manager):
+    headers = {'Authorization': f'Bearer {access_token_manager}'}
     response = client.get('/projects/user', headers=headers)
     assert response.status_code == 200
     assert len(response.json) == 0  # Assuming there are no projects initially

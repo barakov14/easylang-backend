@@ -88,7 +88,7 @@ class ReadTaskSchema(Schema):
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
     status = fields.Str(dump_only=True, validate=validate.OneOf(['IN PROGRESS', 'FINISHED', 'MAY BE DELAYED']),
-                        default='in_process')
+                        default='IN PROGRESS')
     started_at = fields.String(dump_only=True)
     progress = fields.Float(default=0, dump_only=True)
     pages = fields.Integer(required=True)
@@ -105,12 +105,13 @@ class CreateProjectSchema(Schema):
     code = fields.Str(dump_only=True)
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
-    status = fields.Str(dump_only=True, validate=validate.OneOf(['IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),
-                        default='IN PROGRESS')
+    status = fields.Str(dump_only=True, validate=validate.OneOf(['NEW', 'IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),
+                        default='NEW')
     started_at = fields.String(dump_only=True)
     progress = fields.Float(default=0, dump_only=True)
     number_of_pages = fields.Integer(required=True)
     creator_id = fields.String(dump_only=True)
+    deadline = fields.String(required=True)
     ended_at = fields.String(dump_only=True)
     editors = fields.List(fields.Nested(UserSchema), dump_only=True)
     tasks = fields.List(fields.Nested(CreateTaskSchema), dump_only=True)
@@ -123,17 +124,16 @@ class ReadProjectSchema(Schema):
 
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
-    status = fields.Str(dump_only=True, validate=validate.OneOf(['IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),
-                        default='IN PROGRESS')
+    status = fields.Str(dump_only=True, validate=validate.OneOf(['NEW', 'IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),)
     started_at = fields.String(dump_only=True)
     progress = fields.Float(default=0, dump_only=True)
     ended_at = fields.String(dump_only=True)
+    deadline = fields.String(dump_only=True)
     number_of_pages = fields.Integer(dump_only=True)
-    creator_id = fields.String(dump_only=True)
+    creators = fields.List(fields.Nested(UserSchema), dump_only=True)
     editors = fields.List(fields.Nested(UserSchema), dump_only=True)
     tasks = fields.List(fields.Nested(ReadTaskSchema), dump_only=True)
     translators = fields.List(fields.Nested(UserSchema), dump_only=True)
-    creators = fields.List(fields.Nested(UserSchema), dump_only=True)
 
 
 class UpdateProjectSchema(Schema):

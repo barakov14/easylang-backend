@@ -9,3 +9,6 @@ flask-admin
 flask-cors
 celery
 flask-mail
+pytest
+pytest-mock
+redis
