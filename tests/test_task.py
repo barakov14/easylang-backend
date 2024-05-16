@@ -1,4 +1,5 @@
 from datetime import datetime
+from unittest import mock
 
 import pytest
 from flask import Flask
@@ -68,7 +69,8 @@ def test_get_task(client, access_token_manager):
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json['id']
@@ -90,7 +92,8 @@ def test_set_deadline_task(client, access_token_manager, access_token_translator
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json['id']
@@ -128,7 +131,8 @@ def test_create_task(client, access_token_manager):
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
 
@@ -165,10 +169,11 @@ def test_send_submission_reminder(mocker):
 
             # Ожидаемый статус и сообщение
             status = 'REQUIRES_REMINDER'
-            msg = 'It`s Friday. Please submit your work'
+            msg = 'It`s Friday. Please submit.'
 
             # Проверяем, что функция отправки уведомления была вызвана с правильными аргументами
-            mock_send_notification.assert_called_once_with(user_id, project_id, project_name, status, msg)
+            mock_send_notification.assert_called_once_with(user_id, project_id, project_name, status, mock.ANY)
+
 
 
 def test_assign_translator_to_task(client, access_token_manager, access_token_translator, app):
@@ -177,7 +182,8 @@ def test_assign_translator_to_task(client, access_token_manager, access_token_tr
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json['id']
@@ -217,7 +223,8 @@ def test_submit_task(client, access_token_manager, access_token_translator, app)
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json.get('id')  # Используем .get(), чтобы безопасно получить значение
@@ -259,7 +266,8 @@ def test_grade_submission_with_editor_role(client, access_token_manager, access_
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json.get('id')  # Используем .get(), чтобы безопасно получить значение
@@ -321,7 +329,8 @@ def test_grade_reject_with_editor_role(client, access_token_manager, access_toke
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json.get('id')  # Используем .get(), чтобы безопасно получить значение

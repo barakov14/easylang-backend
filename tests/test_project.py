@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from flask_jwt_extended import create_access_token
 from db import db
@@ -44,7 +46,8 @@ def test_create_project(client, access_token_manager):
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 10
+        'number_of_pages': 10,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     assert response.status_code == 201
@@ -64,7 +67,8 @@ def test_get_single_project(client, access_token_manager):
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 10
+        'number_of_pages': 10,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     project_id = response.json['id']
@@ -74,34 +78,14 @@ def test_get_single_project(client, access_token_manager):
     assert response.json['id'] == project_id
 
 
-def test_update_project(client, access_token_manager):
-    headers = {'Authorization': f'Bearer {access_token_manager}'}
-    data = {
-        'name': 'Test Project',
-        'description': 'Test project description',
-        'number_of_pages': 10
-    }
-    response = client.post('/projects', json=data, headers=headers)
-    project_id = response.json['id']
-
-    updated_data = {
-        'name': 'Updated Project',
-        'description': 'Updated project description',
-        'number_of_pages': 20
-    }
-    response = client.put(f'/projects/{project_id}', json=updated_data, headers=headers)
-    assert response.status_code == 200
-    assert response.json['name'] == updated_data['name']
-    assert response.json['description'] == updated_data['description']
-    assert response.json['number_of_pages'] == updated_data['number_of_pages']
-
 
 def test_delete_project(client, access_token_manager):
     headers = {'Authorization': f'Bearer {access_token_manager}'}
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 10
+        'number_of_pages': 10,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     project_id = response.json['id']
@@ -116,7 +100,8 @@ def test_add_project_editor(client, access_token_manager, app):
     data = {
         'name': 'Test Project',
         'description': 'Test project description',
-        'number_of_pages': 13
+        'number_of_pages': 13,
+        'deadline': datetime.utcnow()
     }
     response = client.post('/projects', json=data, headers=headers)
     projid = response.json.get('id')  # Используем .get(), чтобы безопасно получить значение

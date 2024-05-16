@@ -102,7 +102,7 @@ def create_app(db_url=None, blueprint_name=None):
         app.register_blueprint(TaskBlueprint)
         app.register_blueprint(NotificationBlueprint)
 
-    setup_admin(app)
+    # setup_admin(app)
     mail = Mail()
 
     # Подключение и настройка Celery
