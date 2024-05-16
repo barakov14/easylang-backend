@@ -103,6 +103,7 @@ class DeadlineSchema(Schema):
 class CreateProjectSchema(Schema):
     id = fields.Int(dump_only=True)
     code = fields.Str(dump_only=True)
+    color = fields.Str(required=True)
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
     status = fields.Str(dump_only=True, validate=validate.OneOf(['NEW', 'IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),
@@ -121,7 +122,7 @@ class CreateProjectSchema(Schema):
 class ReadProjectSchema(Schema):
     id = fields.Int(dump_only=True)
     code = fields.Str(dump_only=True)
-
+    color = fields.Str(required=True)
     name = fields.Str(required=True, validate=validate.Length(min=1))
     description = fields.Str(required=True, validate=validate.Length(min=1))
     status = fields.Str(dump_only=True, validate=validate.OneOf(['NEW', 'IN PROGRESS', 'MAY BE DELAYED', 'FINISHED']),)
