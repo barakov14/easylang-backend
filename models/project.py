@@ -15,7 +15,7 @@ class ProjectModel(db.Model):
     ended_at = db.Column(db.DateTime, nullable=True, default=None)
     progress = db.Column(db.Float, default=0)
     number_of_pages = db.Column(db.Integer)
-    deadline = db.Column(db.DateTime)
+    deadline = db.Column(db.String(255))
     creator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     creator = db.relationship('UserModel', backref='projects_created_by_user', secondary='project_creators')
