@@ -81,6 +81,18 @@ def create_app(db_url=None, blueprint_name=None):
 
     CORS(app, resources={r"/*": {"origins": "*"}})
 
+    # Регистрация blueprints
+    if blueprint_name:
+        api.register_blueprint(UserBlueprint, name=blueprint_name + '_user')
+        api.register_blueprint(ProjectBlueprint, name=blueprint_name + '_project')
+        api.register_blueprint(TaskBlueprint, name=blueprint_name + '_task')
+        api.register_blueprint(NotificationBlueprint, name=blueprint_name + '_notification')
+    else:
+        api.register_blueprint(UserBlueprint)
+        api.register_blueprint(ProjectBlueprint)
+        api.register_blueprint(TaskBlueprint)
+        api.register_blueprint(NotificationBlueprint)
+
     # Флаг для отслеживания, была ли уже выполнена инициализация базы данных
     initialized = False
 
@@ -88,22 +100,12 @@ def create_app(db_url=None, blueprint_name=None):
     def create_tables():
         nonlocal initialized
         if not initialized:
-            db.create_all()
+            with app.app_context():
+                db.create_all()
             initialized = True
 
-    if blueprint_name:
-        app.register_blueprint(UserBlueprint, name=blueprint_name + '_user')
-        app.register_blueprint(ProjectBlueprint, name=blueprint_name + '_project')
-        app.register_blueprint(TaskBlueprint, name=blueprint_name + '_task')
-        app.register_blueprint(NotificationBlueprint, name=blueprint_name + '_notification')
-    else:
-        app.register_blueprint(UserBlueprint)
-        app.register_blueprint(ProjectBlueprint)
-        app.register_blueprint(TaskBlueprint)
-        app.register_blueprint(NotificationBlueprint)
-
     # setup_admin(app)
-    mail = Mail()
+    mail = Mail(app)
 
     # Подключение и настройка Celery
     celery = make_celery(app)

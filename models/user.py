@@ -18,6 +18,8 @@ class UserModel(db.Model):
     projects_created = db.Column(db.Integer, default=0)
     projects_completed = db.Column(db.Integer, default=0)
     notifications_count = db.Column(db.Integer, default=0)
+    tasks = db.relationship('TaskModel', secondary='task_responsibles', back_populates='responsibles')
+    task_submissions = db.relationship('TaskSubmissionModel', back_populates='translator')
 
     def __repr__(self):
         return f"<User id={self.id}, name={self.name}, email={self.email}, surname={self.surname}, role={self.role}, rate={self.rate}, status={self.status}>"

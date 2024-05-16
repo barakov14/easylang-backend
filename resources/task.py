@@ -78,6 +78,7 @@ class Task(MethodView):
         tasks = project.tasks
         return tasks, 200
 
+
 @blp.route("/task/<int:task_id>/set_deadline")
 class SetTaskDeadline(MethodView):
     @jwt_required()
@@ -87,13 +88,25 @@ class SetTaskDeadline(MethodView):
         current_user_id = get_jwt_identity()
         current_user = UserModel.query.get(current_user_id)
 
-        if current_user.role == "translator":
-            task = TaskModel.query.get_or_404(task_id)
-            task.deadline = deadline_data['deadline']
+        if current_user.role != "manager":
+            abort(403, message="Only managers can set deadlines.")
+
+        task = TaskModel.query.get_or_404(task_id)
+
+        # Преобразование строки в datetime
+        deadline_str = deadline_data['deadline']
+        try:
+            deadline_dt = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
+        except ValueError:
+            abort(400, message="Invalid date format. Expected ISO 8601 format.")
+
+        task.deadline = deadline_dt
+        try:
             db.session.commit()
-            return task, 201
-        else:
-            abort(403, message="Only translators can set deadlines.")
+            return task, 200
+        except SQLAlchemyError:
+            db.session.rollback()
+            abort(500, message="Failed to set deadline due to a database error.")
 
 @blp.route("/task/<int:project_id>/<int:task_id>/translators/<int:translator_id>")
 class TaskTranslator(MethodView):
@@ -115,7 +128,6 @@ class TaskTranslator(MethodView):
         if translator.role != "translator":
             abort(400, message=f"User with ID {translator_id} is not a translator.")
 
-        # Проверка, что переводчик не назначен на эту задачу
         if translator in task.responsibles:
             abort(400, message=f"Translator with ID {translator_id} is already assigned to task with ID {task_id}.")
 
@@ -128,7 +140,6 @@ class TaskTranslator(MethodView):
         project = ProjectModel.query.get_or_404(project_id)
         send_submission_reminder.delay(project_id, project.name, translator_id)
 
-        # Добавление переводчика в проект и назначение его на задачу
         if translator not in project.translators:
             project.translators.append(translator)
         task.responsibles.append(translator)
@@ -165,7 +176,6 @@ class TaskSubmission(MethodView):
         task_submission = TaskSubmissionModel(
             **submission_data,
             task_id=task_id,
-            pages_done=num_pages_done,
             translator_id=current_user_id,
             status="IN VERIFYING"
         )

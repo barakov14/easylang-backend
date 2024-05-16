@@ -41,7 +41,8 @@ class ProjectList(MethodView):
                 description=project_data['description'],
                 number_of_pages=project_data['number_of_pages'],
                 creator_id=current_user_id,
-                status="NEW"
+                status="NEW",
+                color=project_data['color']
             )
             db.session.add(project)
             db.session.commit()
