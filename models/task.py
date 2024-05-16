@@ -21,8 +21,8 @@ class TaskModel(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
     status = db.Column(db.String(20), default='IN PROGRESS')
-    started_at = db.Column(db.String, default=datetime.utcnow)
-    deadline = db.Column(db.String, nullable=True)
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    deadline = db.Column(db.DateTime, nullable=True)
     pages = db.Column(db.Integer, nullable=False)
     rejected = db.Column(db.Integer, default=0)
     progress = db.Column(db.Integer, default=0)
@@ -41,6 +41,5 @@ class TaskResponsiblesModel(db.Model):
 class TaskSubmittedModel(db.Model):
     __tablename__ = 'task_submitted'
 
-    # project_id = db.Column(db.Integer, db.ForeignKey('projects.id'), primary_key=True, autoincrement=True)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'), primary_key=True)
     submission_id = db.Column(db.Integer, db.ForeignKey('task_submissions.id'), primary_key=True)

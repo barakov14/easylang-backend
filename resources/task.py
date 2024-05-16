@@ -252,6 +252,10 @@ class TaskSubmissionGrade(MethodView):
         try:
             project_name = ProjectModel.query.get_or_404(project_id).name
             translators = UserModel.query.filter_by(role="translator", id=submission.translator_id).all()
+            for translator in translators:
+                user = UserModel.query.filter_by(id=translator.id).first()
+                user.notifications_count += 1
+
             notification_msg = f"{current_user.name} {current_user.surname} has graded the task {task.name} in project {project_name}. Grade: {submission.grade}"
             for translator in translators:
                 send_notification(translator.id, project_id, project_name, submission.status, notification_msg)
